@@ -36,3 +36,8 @@ tags
 # PHP CS Fixer configuration
 /.php-cs-fixer.cache
 /.php-cs-fixer.php
+
+# Local-only dirs (CI/CD 敏感配置与临时文件, 永不提交)
+.local/
+.tmp/
+__pycache__

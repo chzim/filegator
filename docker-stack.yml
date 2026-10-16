@@ -1,0 +1,56 @@
+# FileGator Portainer Stack（swarm-o 集群, x86 架构, 参照 cip 项目模式）
+#
+# 部署方式:
+#   1. Portainer UI 先手工创建 Stack（名称 filegator, 端点 swarm-o）
+#   2. 执行 ./portainer_deploy.py 更新 Stack 内容与环境变量
+#
+# 环境变量（Portainer 插值, 均可由 portainer_deploy.py 传入）:
+#   FILEGATOR_IMAGE_TAG  镜像 tag, 默认 v7.16.5 (amd64, 适配 x86 集群)
+#   TZ                   时区, 默认 Asia/Shanghai
+
+version: "3.8"
+
+services:
+  filegator:
+    image: "harbor.xzic.com/filegator/filegator:${FILEGATOR_IMAGE_TAG:-v7.16.5}"
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.filegator.rule=Host(`filegator.swarm-o.xzic.com`)"
+        - "traefik.http.routers.filegator.entrypoints=web"
+        - "traefik.http.routers.filegator.service=filegator"
+        - "traefik.http.routers.filegator-tls.rule=Host(`filegator.swarm-o.xzic.com`)"
+        - "traefik.http.routers.filegator-tls.entrypoints=websec"
+        - "traefik.http.routers.filegator-tls.tls=true"
+        - "traefik.http.routers.filegator-tls.service=filegator"
+        - "traefik.http.services.filegator.loadbalancer.server.port=8080"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+    volumes:
+      # repository/ 用户文件; private/ users.json、sessions、logs
+      - filegator-repository:/var/www/filegator/repository
+      - filegator-private:/var/www/filegator/private
+    networks:
+      - proxy
+
+volumes:
+  # NFS 共享持久化（参照 nightingale 约定, 数据落在 NFS 服务器 172.29.10.99）
+  filegator-repository:
+    driver_opts:
+      type: "nfs"
+      o: "addr=172.29.10.99,nolock,soft,rw"
+      device: ":/data/nfs/filegator_data/repository"
+  filegator-private:
+    driver_opts:
+      type: "nfs"
+      o: "addr=172.29.10.99,nolock,soft,rw"
+      device: ":/data/nfs/filegator_data/private"
+
+networks:
+  proxy:
+    external: true
