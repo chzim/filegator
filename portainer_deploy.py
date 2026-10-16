@@ -8,8 +8,9 @@
 #
 # 环境变量:
 #   PORTAINER_URL   默认 https://portainer.swarm-o.xzic.com
-#   PORTAINER_USER  默认 admin
-#   PORTAINER_PASS  必填
+#   PORTAINER_USER  默认 admin (仅密码模式)
+#   PORTAINER_API_KEY  优先: 直接 Bearer 认证 (xzic 组级变量)
+#   PORTAINER_PASS  回退: 用户名密码登录
 #   STACK_NAME      必填, Portainer 中预先创建的 Stack 名称
 #   TZ / FILEGATOR_IMAGE_TAG   可选, 随 Stack 下发的环境变量
 import os
@@ -20,19 +21,27 @@ requests.packages.urllib3.disable_warnings()
 
 PORTAINER_URL = os.environ.get('PORTAINER_URL', 'https://portainer.swarm-o.xzic.com')
 PORTAINER_USER = os.environ.get("PORTAINER_USER", 'admin')
+PORTAINER_API_KEY = os.environ.get("PORTAINER_API_KEY")
 PORTAINER_PASS = os.environ.get("PORTAINER_PASS")
 STACK_NAME = os.environ.get('STACK_NAME')
 
-if not PORTAINER_PASS or not STACK_NAME:
-    print("错误: 需设置 PORTAINER_PASS 与 STACK_NAME 环境变量")
+if not STACK_NAME:
+    print("错误: 需设置 STACK_NAME 环境变量")
     sys.exit(1)
 
-auth_url = PORTAINER_URL + "/api/auth"
-r = requests.post(auth_url, json={"username": PORTAINER_USER, "password": PORTAINER_PASS}, verify=False)
-r.raise_for_status()
-jwt = r.json()["jwt"]
-print("Portainer 登录成功")
-headers = {"Authorization": "Bearer " + jwt}
+if PORTAINER_API_KEY:
+    headers = {"Authorization": "Bearer " + PORTAINER_API_KEY}
+    print("使用 API Key 认证")
+else:
+    if not PORTAINER_PASS:
+        print("错误: 需设置 PORTAINER_API_KEY 或 PORTAINER_PASS 环境变量")
+        sys.exit(1)
+    auth_url = PORTAINER_URL + "/api/auth"
+    r = requests.post(auth_url, json={"username": PORTAINER_USER, "password": PORTAINER_PASS}, verify=False)
+    r.raise_for_status()
+    jwt = r.json()["jwt"]
+    print("Portainer 登录成功")
+    headers = {"Authorization": "Bearer " + jwt}
 
 r = requests.get(PORTAINER_URL + "/api/stacks", headers=headers, verify=False)
 r.raise_for_status()

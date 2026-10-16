@@ -73,7 +73,8 @@ export STACK_NAME=filegator
 
 | 变量 | 类型 | 说明 |
 |---|---|---|
-| `PORTAINER_PASS` | Masked | Portainer admin 密码（`portainer_deploy.py` 登录用） |
+| `PORTAINER_API_KEY` | Masked | 优先认证方式（**xzic 组级已配置**，直接 Bearer，不受密码/2FA 影响） |
+| `PORTAINER_PASS` | Masked | 回退：admin 用户名密码登录（组级已配置；2026-10 已观察到 422 被拒，疑似过期） |
 
 其余（`PORTAINER_URL`/`STACK_NAME`/`FILEGATOR_IMAGE_TAG`）内置于 `.gitlab-ci.yml` variables。
 
