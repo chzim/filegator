@@ -36,6 +36,7 @@
 
 ```
 AGENT.MD                    本规范文件
+.gitlab-ci.yml              GitLab CI 总入口（一阶段仅 deploy 阶段, 参照 cip 模式）
 docker-stack.yml            Portainer Stack 定义（一阶段部署源）
 portainer_deploy.py         Portainer API 部署脚本（参照 cip 项目模式）
 .local/                     本地敏感信息（不提交）
@@ -57,14 +58,24 @@ portainer_deploy.py         Portainer API 部署脚本（参照 cip 项目模式
 1. Harbor 项目 `filegator` 已创建；官方镜像 `harbor.xzic.com/filegator/filegator:v7.16.5`（Docker Hub `filegator/filegator` 的 amd64 版，适配 x86 集群）已经由 transfer 节点（172.29.10.61，`/root/transfer-images/direct.sh`）同步入 Harbor。升级版本时重新同步对应 tag。
 2. Portainer（`https://portainer.swarm-o.xzic.com`）UI 手工创建 Stack：名称 `filegator`，端点 `swarm-o`（`portainer_deploy.py` 只按名称查找并更新已存在的 Stack，不自动创建）。
 
-**部署**：
+**部署**（CI 或手工，二者等价）：
 
+- **CI（默认路径）**：push 任意分支 → `deploy` job（`docker` 标签 runner）→ `python3 portainer_deploy.py`，以 `FILEGATOR_IMAGE_TAG`（CI 变量，默认 `v7.16.5`）更新 Stack；tag 推送（`v*`）→ 以 tag 名作为镜像 tag 部署（须先用 transfer 节点同步进 Harbor）。
+- **手工**：
 ```bash
 export PORTAINER_PASS='***'   # 不入库, 仅本机 shell
 export STACK_NAME=filegator
 # 可选: export FILEGATOR_IMAGE_TAG=v7.16.5
 ./portainer_deploy.py
 ```
+
+**GitLab CI/CD Variables（一阶段）**：
+
+| 变量 | 类型 | 说明 |
+|---|---|---|
+| `PORTAINER_PASS` | Masked | Portainer admin 密码（`portainer_deploy.py` 登录用） |
+
+其余（`PORTAINER_URL`/`STACK_NAME`/`FILEGATOR_IMAGE_TAG`）内置于 `.gitlab-ci.yml` variables。
 
 **约定**：
 

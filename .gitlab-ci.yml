@@ -1,0 +1,35 @@
+# FileGator GitLab CI（一阶段：Portainer 部署, 参照 cip 项目模式）
+#
+# 触发: 任意分支 push / tag 推送
+# 行为:
+#   - 分支 push: 以 FILEGATOR_IMAGE_TAG(默认 v7.16.5) 更新 Portainer Stack
+#   - tag 推送(v*): 以 tag 名作为镜像 tag 部署(须先用 transfer 节点同步进 Harbor)
+# 二阶段(暂缓): build + deploy_k8s 阶段随 runner 内核 seccomp 问题解决后补入
+
+stages:
+  - deploy
+
+variables:
+  PORTAINER_URL: "https://portainer.swarm-o.xzic.com"
+  STACK_NAME: filegator
+  FILEGATOR_IMAGE_TAG: "v7.16.5"
+
+deploy:
+  stage: deploy
+  before_script:
+    - |
+      unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+      if ! command -v pip3 &> /dev/null; then
+        echo "pip3 not found, installing..."
+        sudo dnf install -y python3-pip
+      fi
+      pip3 install -i https://mirror.nju.edu.cn/pypi/web/simple requests -q
+  script:
+    - |
+      if [ -n "${CI_COMMIT_TAG}" ]; then
+        export FILEGATOR_IMAGE_TAG="${CI_COMMIT_TAG}"
+      fi
+      echo "deploy image tag: ${FILEGATOR_IMAGE_TAG}"
+      python3 portainer_deploy.py
+  tags:
+    - docker
